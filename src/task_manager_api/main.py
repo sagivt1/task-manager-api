@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+from task_manager_api.routers import tasks
 
 app = FastAPI(title="Task Manager API")
+
+app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
 
 @app.get("/")
 def root():

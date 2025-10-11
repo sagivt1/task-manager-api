@@ -1,7 +1,7 @@
 [project]
 name = "task-manager-api"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Task Manager API built with FastAPI"
 readme = "README.md"
 authors = [
     { name = "sagivt1", email = "sagiv.talker@gmail.com" }

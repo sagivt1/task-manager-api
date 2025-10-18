@@ -1,47 +1,57 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-
-class Task(BaseModel):
-    id: int = None
-    title: str
-    description: str
+from fastapi import APIRouter, HTTPException, Depends
+from sqlmodel import Session, select
+from task_manager_api.model import Task, TaskCreate, TaskUpdate
+from task_manager_api.database  import get_session
 
 # create router for the task endpoint
 router = APIRouter()
 
-# memory store for the task (Temporary)
-tasks_db = []
-# Auto increment ID
-current_id = 0
-
-@router.get("/")
-def get_tasks():
-    # Return all the tasks in memory
-    return {"tasks": tasks_db}
-
-@router.post('/')
-def create_task(task: Task):
+@router.get("/", response_model=list[Task])
+def get_tasks(session: Session = Depends(get_session)):
     """
-    Accepts a task object via pydantic.
-    Assign a unique ID and store in memory.
+    Retrieve all tasks from the database.
     """
-    global current_id
-    current_id += 1
-    task.id = current_id
-    tasks_db.append(task.model_dump())
-    return {"message": "Task created successfully", "task": task}
+    task = session.exec(select(Task)).all()
+    return task
+    
 
-@router.delete('/{task_id}')
-def delete_task(task_id: int):
+@router.post('/', response_model=Task)
+def create_task(task: TaskCreate, session: Session = Depends(get_session)):
     """
-    Delete task based on ID.
-    IF not found raise 404 not found.
+    Create a new task.
     """
-    for idx, task in enumerate(tasks_db):
-        if task["id"] == task_id:
-            deleted_task = tasks_db.pop(task_id)
-            return {"message": "Task deleted", "deleted_task": deleted_task}
-    raise HTTPException(status_code=404, detail="Task not found") 
+    db_task = Task(title=task.title, description=task.description)
+    session.add(db_task)
+    session.commit()
+    session.refresh(db_task) # to get auto-generated ID
+    return db_task
 
+@router.patch('/{task_id}', response_model=Task)
+def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depends(get_session)):
+    """
+    Update a task. Only provided fields will be updated.
+    """
+    db_task = session.get(Task, task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task no found")
+    # update only the field that provided
+    task_data = task_update.model_dump(exclude_unset=True)
+    for key, value in task_data.items():
+        setattr(db_task, key, value)
 
+    session.add(db_task)
+    session.commit()
+    session.refresh(db_task)
+    return db_task
 
+@router.delete('/{task_id}', status_code=204)
+def delete_task(task_id: int, session: Session = Depends(get_session)):
+    """
+    Delete a task by ID.
+    """
+    db_task = session.get(Task, task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task no found")
+
+    session.delete(db_task)
+    session.commit()

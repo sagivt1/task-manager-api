@@ -12,6 +12,9 @@ wheels/
 # Env file
 .env
 
+# SQLite database
+*.db
+
 # Ide
 .vscode/
 .idea/

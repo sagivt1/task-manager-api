@@ -9,18 +9,30 @@ router = APIRouter()
 @router.get("/", response_model=list[Task])
 def get_tasks(
     completed: bool | None = Query(default=None, description="filter tasks by completion status"),
-    limit: int | None = Query(default=10, ge=1, le=100),
-    offset: int | None = Query(default=0, ge=0),
-    session: Session = Depends(get_session)
+    limit: int | None = Query(default=10, ge=1, le=100, description="limit the number of tasks returned"),
+    offset: int | None = Query(default=0, ge=0, description="offset for pagination"),
+    search: str | None = Query(None, description="search tasks by title or description"),
+    session: Session = Depends(get_session),
 ):
     """
-    Retrieve all with optional filters by completion status and pagination.
-     
+    Retrieve tasks with pagination, filtering, and searching.  
     """
     query = select(Task)
+    # filter by completed status
     if completed is not None:
         query = query.where(Task.completed == completed)
-    tasks = session.exec(query.offset(offset).limit(limit)).all()
+
+    # search by title or description if provided 
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            (Task.title.like(search_term)) | (Task.description.like(search_term))
+        )
+
+    # Apply pagination
+    query = query.offset(offset).limit(limit)
+
+    tasks = session.exec(query).all()
     return tasks
     
 @router.post('/', response_model=Task)
@@ -42,6 +54,7 @@ def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depend
     db_task = session.get(Task, task_id)
     if not db_task:
         raise HTTPException(status_code=404, detail="Task no found")
+    
     # update only the field that provided
     task_data = task_update.model_dump(exclude_unset=True)
     for key, value in task_data.items():

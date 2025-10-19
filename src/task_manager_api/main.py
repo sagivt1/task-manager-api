@@ -1,12 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from task_manager_api.routers import tasks
 from task_manager_api.database import init_db
 from dotenv import load_dotenv
 import os
+import logging
 
 # Load environment variables
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.info("Starting Task Manager API...")
 
 # Get App title 
 app_title = os.getenv("APP_TITLE", "Task Manager API")
@@ -22,6 +28,16 @@ app = FastAPI(title=app_title, lifespan=lifespan)
 
 # Include tasks router with prefix /tasks
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler
+    """
+    return JSONResponse(
+        status_code=500,
+        content={"message": "Internal Server Error : {exc}"}
+    )
 
 @app.get("/")
 def root():

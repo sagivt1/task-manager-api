@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlmodel import Session, select
 from task_manager_api.model import Task, TaskCreate, TaskUpdate
 from task_manager_api.database  import get_session
@@ -7,14 +7,22 @@ from task_manager_api.database  import get_session
 router = APIRouter()
 
 @router.get("/", response_model=list[Task])
-def get_tasks(session: Session = Depends(get_session)):
+def get_tasks(
+    completed: bool | None = Query(default=None, description="filter tasks by completion status"),
+    limit: int | None = Query(default=10, ge=1, le=100),
+    offset: int | None = Query(default=0, ge=0),
+    session: Session = Depends(get_session)
+):
     """
-    Retrieve all tasks from the database.
+    Retrieve all with optional filters by completion status and pagination.
+     
     """
-    task = session.exec(select(Task)).all()
-    return task
+    query = select(Task)
+    if completed is not None:
+        query = query.where(Task.completed == completed)
+    tasks = session.exec(query.offset(offset).limit(limit)).all()
+    return tasks
     
-
 @router.post('/', response_model=Task)
 def create_task(task: TaskCreate, session: Session = Depends(get_session)):
     """

@@ -1,5 +1,6 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
+from pydantic import field_validator
 
 
 # Database model for tasks
@@ -13,6 +14,13 @@ class Task(SQLModel, table=True):
 class TaskCreate(SQLModel):
     title: str
     description: Optional[str] = None
+
+    @field_validator('title')
+    def non_empty_title(cls, v):
+        if not v.strip():
+            raise ValueError('Title cannot be empty')
+        return v
+
 
 # Input Model for updating task
 class TaskUpdate(SQLModel):

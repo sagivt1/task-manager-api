@@ -13,21 +13,35 @@ def get_tasks(
     offset: int | None = Query(default=0, ge=0, description="offset for pagination"),
     search: str | None = Query(None, description="search tasks by title or description"),
     session: Session = Depends(get_session),
+    sort_by: str = Query("id", description="Field to sort by (id, title, completed)"),
+    order: str = Query("asc", description="Sort order: asc or desc"),
 ):
     """
-    Retrieve tasks with pagination, filtering, and searching.  
+    Retrieve tasks with pagination, filtering, and searching and sorting.  
     """
     query = select(Task)
-    # filter by completed status
+
+    # Filter by completed status
     if completed is not None:
         query = query.where(Task.completed == completed)
 
-    # search by title or description if provided 
+    # Search by title or description if provided 
     if search:
         search_term = f"%{search}%"
         query = query.where(
             (Task.title.like(search_term)) | (Task.description.like(search_term))
         )
+    
+    # Sorting
+
+    valid_field = {"id": Task.id, "title": Task.title, "completed": Task.completed}
+    sort_field = valid_field.get(sort_by, Task.id)
+
+    if order.lower() == "desc":
+        query = query.order_by(sort_field.desc())
+    else:
+        query = query.order_by(sort_field.asc())
+
 
     # Apply pagination
     query = query.offset(offset).limit(limit)

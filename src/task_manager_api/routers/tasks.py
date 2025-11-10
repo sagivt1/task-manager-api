@@ -2,6 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlmodel import Session, select
 from task_manager_api.model import Task, TaskCreate, TaskUpdate
 from task_manager_api.database  import get_session
+from task_manager_api.auth import get_current_user
+from task_manager_api.model import User
+
 
 # create router for the task endpoint
 router = APIRouter()
@@ -13,6 +16,7 @@ def get_tasks(
     offset: int | None = Query(default=0, ge=0, description="offset for pagination"),
     search: str | None = Query(None, description="search tasks by title or description"),
     session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
     sort_by: str = Query("id", description="Field to sort by (id, title, completed)"),
     order: str = Query("asc", description="Sort order: asc or desc"),
 ):
@@ -50,7 +54,9 @@ def get_tasks(
     return tasks
     
 @router.post('/', response_model=Task)
-def create_task(task: TaskCreate, session: Session = Depends(get_session)):
+def create_task(task: TaskCreate, session: Session = Depends(get_session),
+                user: User = Depends(get_current_user)
+    ):
     """
     Create a new task.
     """
@@ -61,7 +67,10 @@ def create_task(task: TaskCreate, session: Session = Depends(get_session)):
     return db_task
 
 @router.patch('/{task_id}', response_model=Task)
-def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depends(get_session)):
+def update_task(task_id: int, task_update: TaskUpdate, 
+                session: Session = Depends(get_session),
+                user: User = Depends(get_current_user),
+    ):
     """
     Update a task. Only provided fields will be updated.
     """
@@ -80,7 +89,9 @@ def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depend
     return db_task
 
 @router.delete('/{task_id}', status_code=204)
-def delete_task(task_id: int, session: Session = Depends(get_session)):
+def delete_task(task_id: int, session: Session = Depends(get_session),
+                user: User = Depends(get_current_user)
+    ):
     """
     Delete a task by ID.
     """

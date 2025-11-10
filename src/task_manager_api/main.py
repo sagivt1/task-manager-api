@@ -39,7 +39,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     """
     return JSONResponse(
         status_code=500,
-        content={"message": "Internal Server Error : {exc}"}
+        content={"message": f"Internal Server Error: {exc}"}
     )
 
 @app.get("/")

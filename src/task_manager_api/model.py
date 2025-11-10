@@ -21,9 +21,13 @@ class TaskCreate(SQLModel):
             raise ValueError('Title cannot be empty')
         return v
 
-
 # Input Model for updating task
 class TaskUpdate(SQLModel):
     title: str
     description: Optional[str] = None
     completed: Optional[bool] = None
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True)
+    hashed_password: str
